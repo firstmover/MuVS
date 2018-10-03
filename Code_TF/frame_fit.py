@@ -8,15 +8,36 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pickle as pkl
 import tensorflow as tf
+from functools import partial
+from psbody.meshlite import Mesh
 from tensorflow.contrib.opt import ScipyOptimizerInterface as scipy_pt
 
 import util
 from smpl_batch import SMPL
+from util import Counter
 
-from IPython import embed
+
+def visualize_kpt(j2d_est, imgs, j2ds, counter, save_dir, save_interval=3):
+    counter.count()
+    if counter.c % save_interval != 0:
+        return
+
+    _, ax = plt.subplots(ncols=2, nrows=2, figsize=(10, 10), dpi=100)
+    for idx in range(0, util.NUM_VIEW):
+        x_est = [float(j2d[1]) for j2d in j2d_est[idx]]
+        y_est = [float(j2d[0]) for j2d in j2d_est[idx]]
+        x_gt = [float(j2d[1]) for j2d in j2ds[idx]]
+        y_gt = [float(j2d[0]) for j2d in j2ds[idx]]
+        idx_c, idx_r = idx // 2, idx % 2
+        ax[idx_c][idx_r].imshow(imgs[idx])
+        ax[idx_c][idx_r].scatter(x=y_est, y=x_est, s=10, c='b', marker='o')
+        ax[idx_c][idx_r].scatter(x=y_gt, y=x_gt, s=10, c='r', marker='o')
+
+    plt.savefig(os.path.join(save_dir, "{:03d}.png".format(counter.c)))
+    plt.cla()
 
 
-def wh(img_path):
+def regress_smpl_param(img_path):
     print("img_path:", img_path)
 
     imgs, j2ds, segs, cams = util.load_data(img_path, util.NUM_VIEW)
@@ -53,36 +74,6 @@ def wh(img_path):
     j2ds_est = [cams[idx].project(tf.squeeze(j3ds)) for idx in range(0, util.NUM_VIEW)]
     j2ds_est = tf.convert_to_tensor(j2ds_est)
 
-    # j2ds_est = tf.concat(j2ds_est, axis=0)
-
-    def lc(j2d_est):
-        _, ax = plt.subplots(1, 3)
-        for idx in range(0, util.NUM_VIEW):
-            import copy
-            tmp = copy.copy(imgs[idx])
-            for j2d in j2ds[idx]:
-                x = int(j2d[1])
-                y = int(j2d[0])
-
-                if x > imgs[0].shape[0] or x > imgs[0].shape[1]:
-                    continue
-                tmp[x:x + 5, y:y + 5, :] = np.array([0, 0, 255])
-
-            for j2d in j2d_est[idx]:
-                x = int(j2d[1])
-                y = int(j2d[0])
-
-                if x > imgs[0].shape[0] or x > imgs[0].shape[1]:
-                    continue
-                tmp[x:x + 5, y:y + 5, :] = np.array([255, 0, 0])
-            ax[idx].imshow(tmp)
-        plt.show()
-
-    if util.VIS_OR_NOT:
-        func_lc = lc
-    else:
-        func_lc = None
-
     objs = {}
     for idx in range(0, util.NUM_VIEW):
         for j, jdx in enumerate(util.TORSO_IDS):
@@ -91,7 +82,13 @@ def wh(img_path):
 
     sess = tf.Session()
     sess.run(tf.global_variables_initializer())
-
+    if util.VIS_OR_NOT:
+        save_dir = './optimize_vis_1'
+        if not os.path.exists(save_dir):
+            os.makedirs(save_dir)
+        func_lc = partial(visualize_kpt, imgs=imgs, j2ds=j2ds, save_dir=save_dir, counter=Counter())
+    else:
+        func_lc = None
     optimizer = scipy_pt(loss=loss, var_list=[param_rot, param_trans],
                          options={'ftol': 0.001, 'maxiter': 500, 'disp': True}, method='L-BFGS-B')
     optimizer.minimize(sess, fetches=[j2ds_est], loss_callback=func_lc)
@@ -105,6 +102,13 @@ def wh(img_path):
     loss = tf.reduce_mean(objs.values())
     optimizer = scipy_pt(loss=loss, var_list=[param_rot, param_trans, param_pose, param_shape],
                          options={'ftol': 0.001, 'maxiter': 500, 'disp': True}, method='L-BFGS-B')
+    if util.VIS_OR_NOT:
+        save_dir = './optimize_vis_2'
+        if not os.path.exists(save_dir):
+            os.makedirs(save_dir)
+        func_lc = partial(visualize_kpt, imgs=imgs, j2ds=j2ds, save_dir=save_dir, counter=Counter())
+    else:
+        func_lc = None
     optimizer.minimize(sess, fetches=[j2ds_est], loss_callback=func_lc)
 
     v_final = sess.run(v)
@@ -113,7 +117,6 @@ def wh(img_path):
     pose_final, betas_final, trans_final = sess.run(
         [tf.concat([param_rot, param_pose], axis=1), param_shape, param_trans])
 
-    from psbody.meshlite import Mesh
     m = Mesh(v=np.squeeze(v_final), f=model_f)
     out_ply_path = img_path.replace('Image', 'Res_1')
     extension = os.path.splitext(out_ply_path)[1]
@@ -139,7 +142,7 @@ def main():
 
     img_files = glob.glob(os.path.join(util.HEVA_PATH, args.data_prefix + '_1_C1', 'Image', '*.png'))
     print("get nr img file: ", len(img_files))
-    wh(img_files[args.index])
+    regress_smpl_param(img_files[args.index])
 
 
 if __name__ == '__main__':

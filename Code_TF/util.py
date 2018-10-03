@@ -21,7 +21,7 @@ HEAD_VID = 411
 # TODO
 NUM_VIEW = 3
 # TODO
-VIS_OR_NOT = False
+VIS_OR_NOT = True
 # TODO
 LOG_OR_NOT = 1
 # TODO
@@ -36,6 +36,15 @@ TEM_J2D_IDS = range(0, 13)
 TEM_SMPL_JOINT_IDS = SMPL_JOINT_IDS
 # TODO
 POSE_PRIOR_PATH = '../Data/Prior/genericPrior.mat'
+
+
+class Counter:
+
+    def __init__(self):
+        self.c = 0
+
+    def count(self):
+        self.c += 1
 
 
 def load_data(img_path, num_view):
@@ -95,17 +104,17 @@ def load_data(img_path, num_view):
 
 
 def load_data_temporal(img_files):
-    imgs = [];
-    j2ds = [];
-    poses = [];
-    betas = [];
+    imgs = []
+    j2ds = []
+    poses = []
+    betas = []
     trans = []
 
     for img_f in img_files:
         img_i, j2d_i_tmp, _, cam_i = load_data(img_f, NUM_VIEW)
         j2d_i = j2d_i_tmp[:, TEM_J2D_IDS]
-        imgs.append(img_i);
-        j2ds.append(j2d_i);
+        imgs.append(img_i)
+        j2ds.append(j2d_i)
 
         pose_path = img_f.replace('Image', 'Res_1')
         extension = os.path.splitext(pose_path)[1]
