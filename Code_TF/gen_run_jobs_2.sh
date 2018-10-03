@@ -4,6 +4,8 @@ total=`ls -lah ../Data/HEVA_Validate/$sequence'_1_C1'/Image/*.png | wc -l`
 total=$(( total+29 ))
 total=$(( total/30 ))
 
+echo $total
+
 for ((idx=0; idx<=total; idx++))
 do
 	echo $idx
