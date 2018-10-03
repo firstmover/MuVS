@@ -156,7 +156,7 @@ def Rodrigues(rot_vs):
                            tf.constant(np.tile(np.eye(3).reshape([1, 3, 3]), [total, 1, 1]), dtype=tf.float32)) \
                + tf.multiply(tf.reshape(t, [total, 1, 1]), tmp_0) \
                + tf.multiply(tf.reshape(s, [total, 1, 1]), tmp_1) \
- \
+
     return rot_mats
 
 

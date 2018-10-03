@@ -1,4 +1,7 @@
+from __future__ import print_function
+
 import tensorflow as tf
+import cv2
 from psbody.meshlite import Mesh
 
 
@@ -10,7 +13,8 @@ class Perspective_Camera():
         self.cx = tf.constant(center_x, dtype=tf.float32)
         self.cy = tf.constant(center_y, dtype=tf.float32)
         self.trans = tf.constant(trans, dtype=tf.float32)
-        self.rotm = tf.constant(cv2.Rodrigues(axis_angle)[0], dtype=tf.float32)
+        rotm = cv2.Rodrigues(axis_angle)
+        self.rotm = tf.constant(rotm[0], dtype=tf.float32)
 
     # points: Nx3
     def transform(self, points):

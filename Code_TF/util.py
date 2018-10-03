@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import os
 
 import cv2
@@ -75,8 +77,15 @@ def load_data(img_path, num_view):
         cam_i = sio.loadmat(cam_i_path, squeeze_me=True, struct_as_record=False)
         cam_i = cam_i['camera']
 
-        cam = Perspective_Camera(cam_i.focal_length[0], cam_i.focal_length[1], cam_i.principal_pt[0],
-                                 cam_i.principal_pt[1],
+        print("in load data")
+        print("cam_i:")
+        print("focal_length: {}".format(cam_i.focal_length))
+        print("principal_pt: {}".format(cam_i.principal_pt))
+        print("t: {}".format(cam_i.t))
+        print("R_angles: {}".format(cam_i.R_angles))
+
+        cam = Perspective_Camera(cam_i.focal_length[0], cam_i.focal_length[1],
+                                 cam_i.principal_pt[0], cam_i.principal_pt[1],
                                  cam_i.t / 1000.0, cam_i.R_angles)
         cams.append(cam)
 
