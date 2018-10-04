@@ -7,7 +7,7 @@ import numpy as np
 import pickle as pkl
 import scipy.io as sio
 
-from camera import Perspective_Camera
+from camera import PerspectiveCameraMerge
 
 # TODO: choose gender
 GENDER = 'f'
@@ -84,9 +84,8 @@ def load_data(img_path, num_view):
         print("t: {}".format(cam_i.t))
         print("R_angles: {}".format(cam_i.R_angles))
 
-        cam = Perspective_Camera(cam_i.focal_length[0], cam_i.focal_length[1],
-                                 cam_i.principal_pt[0], cam_i.principal_pt[1],
-                                 cam_i.t / 1000.0, cam_i.R_angles)
+        cam = PerspectiveCameraMerge(cam_i.focal_length[0], cam_i.focal_length[1],
+                                     cam_i.principal_pt[0], cam_i.principal_pt[1], cam_i.t / 1000.0, cam_i.R_angles)
         cams.append(cam)
 
     # j2ds = np.concatenate(j2ds, axis=0)

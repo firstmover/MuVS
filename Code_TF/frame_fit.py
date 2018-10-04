@@ -50,12 +50,16 @@ def wh(img_path):
     j3ds, v = smpl_model.get_3d_joints(param, util.SMPL_JOINT_IDS)
     j3ds = tf.reshape(j3ds, [-1, 3])
 
-    j2ds_est = [cams[idx].project(tf.squeeze(j3ds)) for idx in range(0, util.NUM_VIEW)]
+    results = [cams[idx].project(tf.squeeze(j3ds)) for idx in range(0, util.NUM_VIEW)]
+    j2ds_est = [results[idx][0] for idx in range(0, util.NUM_VIEW)]
+    j2ds_est_new = [results[idx][1] for idx in range(0, util.NUM_VIEW)]
     j2ds_est = tf.convert_to_tensor(j2ds_est)
+    j2ds_est_new = tf.convert_to_tensor(j2ds_est_new)
 
     # j2ds_est = tf.concat(j2ds_est, axis=0)
 
     def lc(j2d_est):
+        print("type j2d_est:", type(j2d_est))
         _, ax = plt.subplots(1, 3)
         for idx in range(0, util.NUM_VIEW):
             import copy
@@ -78,10 +82,16 @@ def wh(img_path):
             ax[idx].imshow(tmp)
         plt.show()
 
-    if util.VIS_OR_NOT:
-        func_lc = lc
-    else:
-        func_lc = None
+    def print_dis(a, b):
+        print("type:", type(a), type(b))
+        print("j2d_est:")
+        print(a.shape)
+        print("j2d_est_new")
+        print(b.shape)
+        print("distance sum:")
+        print(np.sum(b[:, :, :2] - a))
+
+    func_lc = lc
 
     objs = {}
     for idx in range(0, util.NUM_VIEW):
@@ -93,8 +103,11 @@ def wh(img_path):
     sess.run(tf.global_variables_initializer())
 
     optimizer = scipy_pt(loss=loss, var_list=[param_rot, param_trans],
-                         options={'ftol': 0.001, 'maxiter': 500, 'disp': True}, method='L-BFGS-B')
-    optimizer.minimize(sess, fetches=[j2ds_est], loss_callback=func_lc)
+                         options={'ftol': 0.001, 'maxiter': 1, 'disp': True}, method='L-BFGS-B')
+    optimizer.minimize(sess, fetches=[j2ds_est, j2ds_est_new], loss_callback=print_dis)
+    # optimizer.minimize(sess, fetches=[j2ds_est], loss_callback=func_lc)
+
+    exit()
 
     objs = {}
     pose_diff = tf.reshape(param_pose - pose_mean, [1, -1])
