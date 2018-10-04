@@ -1,6 +1,7 @@
 from __future__ import print_function
 
 import tensorflow as tf
+import numpy as np
 import cv2
 from psbody.meshlite import Mesh
 
@@ -8,38 +9,28 @@ from psbody.meshlite import Mesh
 class Perspective_Camera():
     # Input is in numpy array format
     def __init__(self, focal_length_x, focal_length_y, center_x, center_y, trans, axis_angle):
-        self.fl_x = tf.constant(focal_length_x, dtype=tf.float32)
-        self.fl_y = tf.constant(focal_length_y, dtype=tf.float32)
-        self.cx = tf.constant(center_x, dtype=tf.float32)
-        self.cy = tf.constant(center_y, dtype=tf.float32)
-        self.trans = tf.constant(trans, dtype=tf.float32)
         rotm = cv2.Rodrigues(axis_angle)
-        self.rotm = tf.constant(rotm[0], dtype=tf.float32)
 
-    # points: Nx3
-    def transform(self, points):
-        # points = points + tf.reshape(self.trans, [1, 3])
-        points = tf.expand_dims(points, axis=-1)
-        rotm = tf.tile(tf.reshape(self.rotm, [1, 3, 3]), [tf.shape(points)[0], 1, 1])
-        points = tf.matmul(rotm, points)
-        points = tf.squeeze(points)
-        res = points + tf.reshape(self.trans, [1, 3])
+        I = np.zeros((3, 3), dtype=np.float32)
+        I[0][0] = focal_length_x
+        I[1][1] = focal_length_y
+        I[2][2] = 1
+        I[0][2] = center_x
+        I[1][2] = center_y
 
-        return res
+        E = np.concatenate([rotm[0], trans.reshape(3, 1)], axis=1)
 
-    # Point is a Tensor
+        self.R = tf.constant(np.matmul(I, E), dtype=tf.float32)
+
     def project(self, points):
-        points = self.transform(points)
-        points = points + 1e-8
-
-        xs = tf.divide(points[:, 0], points[:, 2])
-        ys = tf.divide(points[:, 1], points[:, 2])
-        us = self.fl_x * xs + self.cx
-        vs = self.fl_y * ys + self.cy
-        # vs = 480 - vs
-        res = tf.stack([us, vs], axis=1)
-
-        return res
+        points = tf.concat([points, tf.ones([points.shape[0], 1])], axis=1)
+        R = tf.tile(tf.reshape(self.R, [1, 3, 4]), [tf.shape(points)[0], 1, 1])
+        points = tf.expand_dims(points, axis=-1)
+        res = tf.matmul(R, points)
+        res = tf.squeeze(res, axis=-1)
+        z = tf.expand_dims(res[:, 2], axis=-1)
+        res = tf.divide(res, z)
+        return res[:, :2]
 
 
 if __name__ == '__main__':
